@@ -6,6 +6,7 @@ import simplejson
 from bson.json_util import dumps
 from bson.objectid import ObjectId
 from flask.ext.api import status
+from flask_restful import Resource, Api, reqparse
 
 
 EMOTION_SAD = 'sad'
@@ -17,19 +18,44 @@ EMOTION_ANXIOUS = 'anxious'
 app = Flask(__name__)
 app.config['MONGO_DBNAME'] = 'primer'
 mongo = PyMongo(app,config_prefix='MONGO')
+api = Api(app)
 
-@app.route('/fb_login', methods=['POST'])
-def login():
-    if request.method == 'POST':
-        if mongo.db.users.find({'_id': request.form['fb_id']}).count() == 0:
+
+'''
+user: 
+    login[post: user_id, name]
+
+suggestion: 
+    see suggestion[get: message, content]
+    make suggestion[post to suggestion table: user_id, emotion, scenario_id, message, content]
+    see effect[get:impact]    
+
+history:
+    take action[post to history table: user_id, suggestion_id, emotion, scenario_id]
+    give feedback[put: history_id, rating, feedback]
+'''
+
+
+login_parser = reqparse.RequestParser()
+login_parser.add_argument('_id', type=str)
+login_parser.add_argument('name', type=str)
+
+class Login(Resource):
+
+    def post(self):            
+        args = login_parser.parse_args()
+        if mongo.db.users.find({'_id': args['_id']}).count() == 0:
             mongo.db.users.insert_one({
-                '_id': request.form['fb_id'],
-                'name': request.form['name'],
+                '_id': args['_id'],
+                'name': args['name'],
                 'join_time': datetime.now()
             })
             return dumps({'status': "new user"})
         else:
             return dumps({'status': "existing user"})
+
+
+'''
 
 def validate_user(user_id):
     if mongo.db.users.find({'_id': user_id}).count() == 0:
@@ -139,7 +165,10 @@ def take_suggestion():
         return dumps({'_id': object_id, 'status': "success"})
     else:
         return dumps({'status': "fail"})
+'''
+
+
+api.add_resource(Login, '/login')
 
 if __name__ == '__main__':
-    app.debug = True
-    app.run(host='0.0.0.0', port=8080)
+    app.run(host='0.0.0.0', port=8080, debug=True)
