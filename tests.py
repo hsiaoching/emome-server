@@ -4,8 +4,9 @@ import unittest
 import flask
 import flask.ext.pymongo
 import simplejson
-from bson.json_util import dumps
-
+from bson.json_util import dumps, loads
+import ast
+import json
 
 
 class FlaskRequestTest(unittest.TestCase):
@@ -37,10 +38,10 @@ class FlaskPyMongoTest(FlaskRequestTest):
         server.app.extensions['pymongo'].pop('TEST')
         super(FlaskPyMongoTest, self).tearDown()
 
-    def login(self, name, fb_id):
-        return self.app.post('/fb_login', data=dict(
+    def login(self, name, _id):
+        return self.app.post('/login', data=dict(
             name = name,
-            fb_id = fb_id
+            _id = _id
         ))
    
     def test_login(self):
@@ -49,7 +50,9 @@ class FlaskPyMongoTest(FlaskRequestTest):
         num_user = server.mongo.db.users.find({'_id': "000000"}).count()
         assert num_user == 0
         rv = self.login("Jean", "000000")
-        assert dumps({'status': "new user"}) == rv.data
+        print rv.data
+        print json.loads(rv.data), type(json.loads(rv.data))
+        assert {'status': "new user"} == json.loads(rv.data)
         num_user = server.mongo.db.users.find({'_id': "000000"}).count()
         assert num_user == 1
         rv = self.login("Jean", "000000")
@@ -58,7 +61,7 @@ class FlaskPyMongoTest(FlaskRequestTest):
         assert num_user == 1
 
     def make_suggestion(self, user_id, emotion, scenario_id, content, message):
-        return self.app.post('/make_suggestion', data=dict(
+        return self.app.post('/suggestion', data=dict(
             user_id = user_id,
             emotion = dumps(emotion),
             scenario_id = scenario_id,
@@ -117,13 +120,14 @@ class FlaskPyMongoTest(FlaskRequestTest):
         assert rv.status_code == 403
     
     def take_suggestion(self, user_id, suggestion_id, emotion, scenario_id):
-        return self.app.post('/take_suggestion', data=dict(
+        return self.app.post('/suggestion', data=dict(
             user_id = user_id,
             suggestion_id = suggestion_id,
             emotion = dumps(emotion),
             scenario_id = scenario_id
         ))
 
+'''
     def test_take_suggestion(self):
         print("Test: take suggestion")
 
@@ -151,7 +155,7 @@ class FlaskPyMongoTest(FlaskRequestTest):
         # check: invalid suggestion id
         rv = self.take_suggestion("000000", "123", emotion, 3)
         assert rv.status_code == 403
-
+'''
 
 if __name__ == '__main__':
     unittest.main()
